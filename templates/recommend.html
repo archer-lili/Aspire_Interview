@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Recommend Media{% endblock %}
+
+{% block content %}
+<h2>Media Recommendation</h2>
+
+<form method="POST" action="{{ url_for('recommend') }}">
+    <div class="mb-3">
+        <label for="query" class="form-label">Enter a description or preference:</label>
+        <input type="text" class="form-control" id="query" name="query" value="{{ query }}" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Get Recommendation</button>
+</form>
+
+{% if recommendations %}
+    <hr>
+    <h4>Recommendations:</h4>
+    <ul class="list-group">
+        {% for rec in recommendations %}
+            <li class="list-group-item">{{ rec }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+{% endblock %}

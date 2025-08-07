@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Your Media{% endblock %}
+{% block content %}
+<h2>My Media</h2>
+
+<div class="mb-3">
+    <input
+        type="text"
+        id="filterInput"
+        class="form-control"
+        placeholder="Filter by title, creator, genre or status..."
+        onkeyup="filterMedia()"
+    >
+</div>
+
+<ul class="list-group" id="mediaList">
+    {% for item in user_media %}
+        <li class="list-group-item">
+            <strong class="title">{{ item.media.title }}</strong> by 
+            <span class="creator">{{ item.media.creator }}</span> - 
+            <span class="genre">{{ item.media.genre }}</span> - 
+            <em class="status">{{ item.status }}</em>
+        </li>
+    {% else %}
+        <li class="list-group-item">No media found.</li>
+    {% endfor %}
+</ul>
+
+<script>
+function filterMedia() {
+    const filter = document.getElementById('filterInput').value.toLowerCase();
+    const list = document.getElementById('mediaList');
+    const items = list.getElementsByTagName('li');
+
+    for (let i = 0; i < items.length; i++) {
+        const title = items[i].querySelector('.title').textContent.toLowerCase();
+        const creator = items[i].querySelector('.creator').textContent.toLowerCase();
+        const genre = items[i].querySelector('.genre').textContent.toLowerCase();
+        const status = items[i].querySelector('.status').textContent.toLowerCase();
+
+        if (title.includes(filter) || creator.includes(filter) || genre.includes(filter) || status.includes(filter)) {
+            items[i].style.display = '';
+        } else {
+            items[i].style.display = 'none';
+        }
+    }
+}
+</script>
+{% endblock %}

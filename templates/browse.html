@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Browse Media{% endblock %}
+{% block content %}
+<h2>All Media</h2>
+
+<form method="GET" class="row g-3 mb-3">
+    <div class="col-md-4">
+        <input
+            type="text"
+            name="title"
+            class="form-control"
+            placeholder="Search by title"
+            value="{{ title }}"
+        >
+    </div>
+    <div class="col-md-4">
+        <input
+            type="text"
+            name="genre"
+            class="form-control"
+            placeholder="Search by genre"
+            value="{{ genre }}"
+        >
+    </div>
+    <div class="col-md-4">
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a href="{{ url_for('browse_media') }}" class="btn btn-secondary ms-2">Reset</a>
+    </div>
+</form>
+
+<ul class="list-group">
+    {% for media in media_list %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+            <strong>{{ media.title }}</strong> by {{ media.creator }} - {{ media.genre }}
+        </div>
+        <form method="POST" class="d-flex align-items-center" style="gap: 0.5rem;">
+            <input type="hidden" name="media_title" value="{{ media.title }}">
+            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Set status</option>
+                <option value="owned">Owned</option>
+                <option value="wishlist">Wishlist</option>
+                <option value="currently using">Currently Using</option>
+                <option value="completed">Completed</option>
+            </select>
+        </form>
+    </li>
+    {% else %}
+        <li class="list-group-item">No media found.</li>
+    {% endfor %}
+</ul>
+
+{% endblock %}

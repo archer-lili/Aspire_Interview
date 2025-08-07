@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Filter My Media{% endblock %}
+{% block content %}
+<h2>Filter My Media</h2>
+<form method="POST">
+    <div class="mb-3">
+        <label>Status</label>
+        <select name="status" class="form-select">
+            <option value="">-- Any --</option>
+            <option value="owned">Owned</option>
+            <option value="wishlist">Wishlist</option>
+            <option value="completed">Completed</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label>Genre</label>
+        <input type="text" name="genre" class="form-control">
+    </div>
+    <button class="btn btn-primary">Filter</button>
+</form>
+{% endblock %}
