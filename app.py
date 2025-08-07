@@ -117,46 +117,83 @@ def view_user_media():
     user_media = query.all()
     return render_template('view.html', user_media=user_media, status=status, genre=genre, title=title)
 
-
-
-@app.route('/browse', methods=['GET', 'POST'])
+@app.route('/browse', methods=['GET'])
 @login_required
-def browse_media():
-    if request.method == 'POST' and 'status' in request.form:
-        # Handle status update from dropdown
-        media_title = request.form.get('media_title')
-        status = request.form.get('status')
-        if media_title and status:
-            user_media = UserMedia.query.filter_by(user_id=current_user.username, media_title=media_title).first()
-            if user_media:
-                user_media.status = status
-            else:
-                user_media = UserMedia(user_id=current_user.username, media_title=media_title, status=status)
-                db.session.add(user_media)
-            db.session.commit()
-            flash(f'Status for "{media_title}" set to "{status}".', 'success')
-        else:
-            flash('Invalid data submitted.', 'danger')
-        return redirect(url_for('browse_media'))
+def browse():
+    query = request.args.get('q', '').strip()
 
-    # GET or POST without status means search/filter
-    title = request.args.get('title', '').strip()
-    genre = request.args.get('genre', '').strip()
+    if query:
+        search = f"%{query}%"
+        media_entries = Media.query.filter(
+            db.or_(
+                Media.title.ilike(search),
+                Media.creator.ilike(search),
+                Media.genre.ilike(search),
+                Media.media_tags.ilike(search)
+            )
+        ).all()
+    else:
+        media_entries = Media.query.all()
 
-    query = Media.query
-    if title:
-        query = query.filter(Media.title.ilike(f"%{title}%"))
-    if genre:
-        query = query.filter(Media.genre.ilike(f"%{genre}%"))
+    return render_template(
+        'browse.html',
+        media_entries=media_entries,
+        query=query
+    )
 
-    media_list = query.all()
-    return render_template('browse.html', media_list=media_list, title=title, genre=genre)
+@app.route('/edit_media/<title>', methods=['GET', 'POST'])
+@login_required
+def edit_media(title):
+    media = Media.query.get_or_404(title)
+
+    if request.method == 'POST':
+        media.creator = request.form['creator']
+        media.genre = request.form['genre']
+
+        # ✅ Convert string to Python date object
+        release_date_str = request.form['release_date']
+        media.release_date = datetime.strptime(release_date_str, "%Y-%m-%d").date()
+
+        # ✅ Handle tags
+        tags = request.form['tags']
+        media.set_metadata_list(tags.split(',') if tags else [])
+
+        db.session.commit()
+        flash('Media updated successfully.', 'success')
+        return redirect(url_for('browse'))
+
+    return render_template('edit_media.html', media=media)
 
 
-    # GET request - show all media
-    media_list = Media.query.all()
-    return render_template('browse.html', media_list=media_list)
+@app.route('/delete_media/<title>', methods=['POST'])
+@login_required
+def delete_media(title):
+    media = Media.query.get_or_404(title)
+    db.session.delete(media)
+    db.session.commit()
+    flash('Media deleted successfully.', 'danger')
+    return redirect(url_for('browse'))
 
+@app.route('/change_status/<title>', methods=['POST'])
+@login_required
+def change_status(title):
+    status = request.form['status']
+    user_media = UserMedia.query.filter_by(user_id=current_user.username, media_title=title).first()
+
+    if user_media:
+        user_media.status = status
+    else:
+        # If not linked, create the record
+        user_media = UserMedia(
+            user_id=current_user.username,
+            media_title=title,
+            status=status
+        )
+        db.session.add(user_media)
+
+    db.session.commit()
+    flash(f"Status updated to '{status}'.", 'info')
+    return redirect(url_for('browse'))
 
 
 @app.route('/admin/media', methods=['GET'])
@@ -167,175 +204,52 @@ def admin_media_list():
     user_media = UserMedia.query.filter_by(user_id=current_user.username).all()
     return render_template('admin_media_list.html', user_media=user_media)
 
-from datetime import datetime
-from flask import request, flash, redirect, url_for, render_template
-from flask_login import login_required, current_user
-
-from flask import (
-    render_template, request, redirect, url_for, flash
-)
-from flask_login import login_required, current_user
-from datetime import datetime
-
-
-@app.route('/admin/media/add', methods=['GET', 'POST'])
-@app.route('/admin/media/edit/<string:title>', methods=['GET', 'POST'])
+@app.route('/add', methods=['GET', 'POST'])
 @login_required
-@admin_required
-def admin_add_edit_media(title=None):
-    media = None
-    user_media = None
-    action = "Add"
-
-    if title:
-        media = Media.query.get_or_404(title)
-        user_media = UserMedia.query.filter_by(user_id=current_user.username, media_title=title).first()
-        action = "Edit"
-
+def admin_add_media():
     if request.method == 'POST':
-        form_title = request.form.get('title')
+        # Get data from the form submission
+        title = request.form.get('title')
         creator = request.form.get('creator')
         genre = request.form.get('genre')
         release_date_str = request.form.get('release_date')
         media_tags = request.form.get('media_tags')
-        status = request.form.get('status')
 
-        # Validate required fields
-        if not (form_title and creator and genre and release_date_str and status):
-            flash('Please fill all required fields.', 'warning')
-            # Re-render the form with current inputs
-            return render_template(
-                'admin_add_edit_media.html',
-                action=action,
-                media=media or Media(
-                    title=form_title,
-                    creator=creator,
-                    genre=genre,
-                    release_date=None,
-                    media_tags=media_tags
-                ),
-                user_media=user_media or UserMedia(status=status)
-            )
+        # Basic validation
+        if not all([title, creator, genre, release_date_str]):
+            return "Missing required fields!", 400
 
-        # Parse release_date
+        # Convert release_date string to a datetime.date object
         try:
             release_date = datetime.strptime(release_date_str, '%Y-%m-%d').date()
         except ValueError:
-            flash('Invalid date format. Use YYYY-MM-DD.', 'danger')
-            return render_template(
-                'admin_add_edit_media.html',
-                action=action,
-                media=media or Media(
-                    title=form_title,
-                    creator=creator,
-                    genre=genre,
-                    release_date=None,
-                    media_tags=media_tags
-                ),
-                user_media=user_media or UserMedia(status=status)
-            )
+            return "Invalid date format. Please use YYYY-MM-DD.", 400
 
-        if action == "Add":
-            # Prevent duplicate media title
-            if Media.query.get(form_title):
-                flash(f'Media with title "{form_title}" already exists.', 'warning')
-                return render_template(
-                    'admin_add_edit_media.html',
-                    action=action,
-                    media=media or Media(
-                        title=form_title,
-                        creator=creator,
-                        genre=genre,
-                        release_date=release_date,
-                        media_tags=media_tags
-                    ),
-                    user_media=user_media or UserMedia(status=status)
-                )
+        # Check for existing media with the same title (primary key)
+        if Media.query.get(title):
+            return "Media with this title already exists!", 409
 
-            media = Media(
-                title=form_title,
-                creator=creator,
-                genre=genre,
-                release_date=release_date
-            )
-            if media_tags:
-                media.set_metadata_list(media_tags.split(','))
-            db.session.add(media)
+        # Create a new Media object
+        new_media = Media(
+            title=title,
+            creator=creator,
+            genre=genre,
+            release_date=release_date,
+            media_tags=media_tags
+        )
 
-            user_media = UserMedia(user_id=current_user.username, media_title=form_title, status=status)
-            db.session.add(user_media)
+        # Add to the database
+        try:
+            db.session.add(new_media)
+            db.session.commit()
+            return redirect(url_for('browse')) # Redirect to a success page or home
+        except Exception as e:
+            db.session.rollback()
+            return f"An error occurred: {str(e)}", 500
 
-        else:  # Edit
-            media.creator = creator
-            media.genre = genre
-            media.release_date = release_date
-            if media_tags:
-                media.set_metadata_list(media_tags.split(','))
-            else:
-                media.media_tags = None
+    # For GET requests, render the form page
+    return render_template('add_media.html')
 
-            if user_media:
-                user_media.status = status
-            else:
-                user_media = UserMedia(user_id=current_user.username, media_title=media.title, status=status)
-                db.session.add(user_media)
-
-        db.session.commit()
-        flash(f'Media "{form_title}" {action.lower()}ed successfully.', 'success')
-        return redirect(url_for('admin_media_list'))
-
-    # GET request: Render form with existing data if editing
-    return render_template('admin_add_edit_media.html', action=action, media=media, user_media=user_media)
-
-
-# @app.route('/admin/media/edit/<string:title>', methods=['GET', 'POST'])
-# @login_required
-# @admin_required
-# def admin_edit_media(title):
-#     media = Media.query.get_or_404(title)
-#     user_media = UserMedia.query.filter_by(user_id=current_user.username, media_title=title).first()
-#     if not user_media:
-#         flash("You don't have permission to edit this media", 'danger')
-#         return redirect(url_for('admin_media_list'))
-
-#     if request.method == 'POST':
-#         media.creator = request.form.get('creator')
-#         media.genre = request.form.get('genre')
-#         media.release_date = request.form.get('release_date')
-#         media_tags = request.form.get('media_tags')
-#         media.set_metadata_list(media_tags.split(',')) if media_tags else media.media_tags
-
-#         user_media.status = request.form.get('status')
-
-#         db.session.commit()
-#         flash(f'Media "{title}" updated successfully', 'success')
-#         return redirect(url_for('admin_media_list'))
-
-#     return render_template('admin_add_edit_media.html', action="Edit", media=media, user_media=user_media)
-
-@app.route('/admin/media/delete/<string:title>', methods=['POST'])
-@login_required
-@admin_required
-def admin_delete_media(title):
-    media = Media.query.get_or_404(title)
-    user_media = UserMedia.query.filter_by(user_id=current_user.username, media_title=title).first()
-
-    if not user_media:
-        flash("You don't have permission to delete this media", 'danger')
-        return redirect(url_for('admin_media_list'))
-
-    # Delete user-media association first
-    db.session.delete(user_media)
-    db.session.commit()
-
-    # If no other users are linked to this media, delete media itself
-    others = UserMedia.query.filter_by(media_title=title).first()
-    if not others:
-        db.session.delete(media)
-        db.session.commit()
-
-    flash(f'Media "{title}" deleted successfully', 'success')
-    return redirect(url_for('admin_media_list'))
 
 @app.route('/recommend', methods=['GET', 'POST'])
 def recommend():

@@ -1,53 +1,52 @@
 {% extends "base.html" %}
-{% block title %}Browse Media{% endblock %}
-{% block content %}
-<h2>All Media</h2>
 
-<form method="GET" class="row g-3 mb-3">
-    <div class="col-md-4">
-        <input
-            type="text"
-            name="title"
-            class="form-control"
-            placeholder="Search by title"
-            value="{{ title }}"
-        >
-    </div>
-    <div class="col-md-4">
-        <input
-            type="text"
-            name="genre"
-            class="form-control"
-            placeholder="Search by genre"
-            value="{{ genre }}"
-        >
-    </div>
-    <div class="col-md-4">
+{% block title %}Browse Media{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Browse Media Library</h1>
+
+<form method="get" action="{{ url_for('browse') }}" class="mb-4">
+    <div class="input-group">
+        <input type="text" name="q" class="form-control" placeholder="Search by title, creator, genre, or tag" value="{{ query }}">
         <button type="submit" class="btn btn-primary">Search</button>
-        <a href="{{ url_for('browse_media') }}" class="btn btn-secondary ms-2">Reset</a>
     </div>
 </form>
 
-<ul class="list-group">
-    {% for media in media_list %}
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-        <div>
-            <strong>{{ media.title }}</strong> by {{ media.creator }} - {{ media.genre }}
-        </div>
-        <form method="POST" class="d-flex align-items-center" style="gap: 0.5rem;">
-            <input type="hidden" name="media_title" value="{{ media.title }}">
-            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">Set status</option>
-                <option value="owned">Owned</option>
-                <option value="wishlist">Wishlist</option>
-                <option value="currently using">Currently Using</option>
-                <option value="completed">Completed</option>
-            </select>
-        </form>
-    </li>
-    {% else %}
-        <li class="list-group-item">No media found.</li>
-    {% endfor %}
-</ul>
+{% if media_entries %}
+    <ul class="list-group">
+        {% for media in media_entries %}
+        <li class="list-group-item">
+            <h5>{{ media.title }}</h5>
+            <p class="mb-1"><strong>Creator:</strong> {{ media.creator }}</p>
+            <p class="mb-1"><strong>Genre:</strong> {{ media.genre }}</p>
+            <p class="mb-1"><strong>Released:</strong> {{ media.release_date.strftime('%Y-%m-%d') }}</p>
+            <p class="mb-3"><strong>Tags:</strong> {{ media.get_metadata_list()|join(', ') }}</p>
 
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('edit_media', title=media.title) }}" class="btn btn-warning btn-sm">Edit</a>
+
+                    <form method="post" action="{{ url_for('delete_media', title=media.title) }}">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this media?')">Delete</button>
+                    </form>
+                {% endif %}
+
+                <form method="post" action="{{ url_for('change_status', title=media.title) }}" class="d-flex align-items-center gap-2">
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="owned">Owned</option>
+                        <option value="wishlist">Wishlist</option>
+                        <option value="currently using">Currently Using</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                    <button type="submit" class="btn btn-secondary btn-sm">Change</button>
+                </form>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="alert alert-warning mt-4" role="alert">
+        No media entries found.
+    </div>
+{% endif %}
 {% endblock %}

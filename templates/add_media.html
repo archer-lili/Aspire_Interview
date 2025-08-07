@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Media{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="card-title mb-4">Add New Media</h2>
+
+            <form action="{{ url_for('admin_add_media') }}" method="POST">
+                <div class="mb-3">
+                    <label for="title" class="form-label">Title</label>
+                    <input type="text" class="form-control" id="title" name="title" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="creator" class="form-label">Creator</label>
+                    <input type="text" class="form-control" id="creator" name="creator" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="genre" class="form-label">Genre</label>
+                    <input type="text" class="form-control" id="genre" name="genre" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="release_date" class="form-label">Release Date</label>
+                    <input type="date" class="form-control" id="release_date" name="release_date" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="media_tags" class="form-label">Tags (comma-separated)</label>
+                    <input type="text" class="form-control" id="media_tags" name="media_tags">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Add Media</button>
+                <a href="{{ url_for('browse') }}" class="btn btn-secondary ms-2">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

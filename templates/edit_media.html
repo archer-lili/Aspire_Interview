@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Edit Media{% endblock %}
+
+{% block content %}
+<h2>Edit Media: {{ media.title }}</h2>
+<form method="post">
+    <div class="mb-3">
+        <label for="creator" class="form-label">Creator</label>
+        <input type="text" class="form-control" name="creator" value="{{ media.creator }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="genre" class="form-label">Genre</label>
+        <input type="text" class="form-control" name="genre" value="{{ media.genre }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="release_date" class="form-label">Release Date</label>
+        <input type="date" class="form-control" name="release_date" value="{{ media.release_date }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="tags" class="form-label">Tags (comma-separated)</label>
+        <input type="text" class="form-control" name="tags" value="{{ media.media_tags }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('browse') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
